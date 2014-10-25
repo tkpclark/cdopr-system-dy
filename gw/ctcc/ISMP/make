@@ -1,0 +1,11 @@
+gcc -g -o IsmpSpEngine IsmpSpEngine.c soapC.c soapServer.c  \
+../pub/stdsoap2.c \
+../pub/pubfunc.c \
+../pub/mysqllib.c \
+-I../pub/ \
+-I/usr/include/mysql \
+-L/usr/lib64/mysql  \
+-L../pub/ \
+-lgsoap -lccl -liconv -lmysqlclient -DDEBUG
+cp IsmpSpEngine /home/tkp/cdopr/bin -f
+

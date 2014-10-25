@@ -1,0 +1,1 @@
+setsid mn.sh ./unimt hebei.config &

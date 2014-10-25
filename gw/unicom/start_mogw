@@ -1,0 +1,2 @@
+killall -g tcpserver > /dev/null
+tcpserver -R -H -l 0 0 17365 ./unimo hebei.config &
