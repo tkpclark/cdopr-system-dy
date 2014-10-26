@@ -321,6 +321,7 @@ main(int argc, char **argv)
 		}
 		if(!*(unsigned int*)(p_map+2*sizeof(unsigned int)))
 		{
+			kill(prtpid,SIGUSR1);
 			myflock(lockfd,2);
 			//proclog(MESSAGE:logfd,"no data now");
 			//pause();
@@ -342,10 +343,7 @@ main(int argc, char **argv)
 		{
 			proclog("unlock error! %s",strerror(errno));
 		}
-		if(leftnum==1)
-		{
-			kill(prtpid,SIGUSR1);
-		}
+
 		fulfil(p_chd);
 		alarm(0);
 	}
