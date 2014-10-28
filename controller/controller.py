@@ -87,6 +87,7 @@ def init_env():
     logger.setLevel(logging.NOTSET)
     logging.info("starting...")
     
+    
     #init product_route
     global product_route
     product_route = Product_route()
@@ -139,13 +140,11 @@ def main():
                 
                 #######match a product
                 cmd_info.clear()
-                cmd_info = copy.copy(product_route.match(record['gwid'], record['sp_number'], record['mo_message']))
+                cmd_info = copy.copy(product_route.get_cmd_info(record['gwid'], record['sp_number'], record['mo_message']))
                 if(cmd_info == {}):
                     mo_status='无匹配指令'
                     break
-                
-                ###########mt_message  
-                cmd_info['mt_message']=product_route.get_random_content(cmd_info['cmdID'])
+
                 ########标注指令信息
                 write_cmd_info(record['id'], cmd.get_cmd_info(cmd_info['cmdID']))
 

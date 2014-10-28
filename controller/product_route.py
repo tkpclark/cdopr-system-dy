@@ -1,5 +1,5 @@
 #product is just cmd s
-
+#encoding:utf-8
 
 from Mydb import mysql
 import random
@@ -65,7 +65,7 @@ class Product_route:
             
         return False
     
-    def match(self, gwid, sp_number, message):
+    def __match__(self, gwid, sp_number, message):
         #there is  "tel:" before ctcc spnumber, need to remove it
         if(sp_number[0:4] == 'tel:'):
             sp_number = sp_number[4:]
@@ -94,5 +94,26 @@ class Product_route:
         else:
             str = str[0:-2] + self.__t__
         return str
+    
+    def get_cmd_info(self, gwid, sp_number, message):
+        cmd_info = self.__match__(gwid, sp_number, message)
+        if(cmd_info != {}):
+            cmd_info['mt_message']=eval("self.%s(cmd_info['cmdID'])"%cmd_info['app_module'])
+            return cmd_info
+        else:
+            return {}
+        
+        
+        
+    ###=========
+    def app_default(self,cmdID):
+        return self.get_random_content(cmdID)
+    
+    
+    def app_qishun(self,cmdID):
+        #发卡逻辑
+        pass
+    
+
     
     

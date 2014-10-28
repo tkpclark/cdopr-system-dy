@@ -47,7 +47,7 @@ def update_forward_info(message_id,forward_status,forward_result,forward_resp,fo
     else:
         sql = "update wraith_message set forward_status='%d', forward_%s_result='%d',forward_%s_time=NOW(),forward_%s_resp='%s',forward_%s_url='%s' where id='%s'" \
         %(forward_status,type,forward_result,type,type,forward_resp,type,forward_url,message_id)    
-        logging.info('dbsql:%s',sql)
+        #logging.info('dbsql:%s',sql)
     mysql.query(sql)
     #time.sleep(100)
     
