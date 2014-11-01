@@ -25,7 +25,9 @@
 		$logging->info("data plain text:".$data);
 		$data = $Des_Crypt->encrypt($data,$key,true);
 		$data = urlencode($data);
-		$url = "http://124.160.238.117/mobile/servlet/ReceiverSpzyData?data=".$data;
+		//$url = "http://124.160.238.117/mobile/servlet/ReceiverSpzyData?data=".$data;
+		$url = "http://122.224.178.105/mobile/servlet/ReceiverSpzyData?data=".$data;
+		
 	}
 	else if($_REQUEST['forward_type']=="mr")//send mr
 	{
@@ -34,7 +36,8 @@
 		$logging->info("data plain text:".$data);
 		$data = $Des_Crypt->encrypt($data,$key,true);
 		$data = urlencode($data);
-		$url = "http://124.160.238.117/mobile/servlet/ReceiverSpzyMR?data=".$data;
+		//$url = "http://124.160.238.117/mobile/servlet/ReceiverSpzyMR?data=".$data;
+		$url = "http://122.224.178.105/mobile/servlet/ReceiverSpzyMR?data=".$data;
 	}
 	else//wait for report
 	{

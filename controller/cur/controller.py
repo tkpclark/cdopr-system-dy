@@ -18,14 +18,13 @@ from blklist import *
 from whitelist import *
 from visit_limit import *
 from frequency import *
-from app import *
 import datetime
 import copy
 from ran import in_po
     
 def get_data():
     sql = 'select id,phone_number,mo_message,sp_number,linkid,gwid,province,area,motime from wraith_message where mo_status is null order by id asc limit 50'
-    #logging.info(sql)
+    logging.info(sql)
     data = mysql.queryAll(sql);
     return data
 
@@ -141,32 +140,13 @@ def main():
                 
                 #######match a product
                 cmd_info.clear()
-                try:
-                    cmd_info = copy.copy(product_route.get_cmd_info(record['gwid'], record['sp_number'], record['mo_message']))
-                    if(cmd_info == {}):
-                        mo_status='无匹配指令'
-                        break
-                except Exception, e:
-                    mo_status='prod_fail'
-                    logging.info("prod_fail:%s",e)
+                cmd_info = copy.copy(product_route.get_cmd_info(record['gwid'], record['sp_number'], record['mo_message']))
+                if(cmd_info == {}):
+                    mo_status='无匹配指令'
                     break
 
-                
-                #print cmd_info
-                #print cmd_info['messages'][1]['content']
-                #sys.exit()
                 ########标注指令信息
                 write_cmd_info(record['id'], cmd.get_cmd_info(cmd_info['cmdID']))
-                
-                
-                
-                #######应用逻辑
-                try:
-                    cmd_info['mt_message']=eval("%s(cmd_info,record)"%cmd_info['app_module'])
-                except Exception, e:
-                    mo_status='app_fail'
-                    logging.info("app_fail:%s",e)
-                    break
 
                 #######白名单
                 if(whitelist.match(record['phone_number'])):

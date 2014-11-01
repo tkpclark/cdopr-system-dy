@@ -53,7 +53,7 @@ def check():
     n = int(mysql.queryAll(sql)[0]['num'])
     
     #print n
-    if(n<20):
+    if(n>20):
         errmsg='wait number: %d'%n
         fuck=1
     ###### 

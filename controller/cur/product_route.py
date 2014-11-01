@@ -24,20 +24,19 @@ class Product_route:
         #load conents
         default_content={}
         default_content['content']=""
-        for cmd in self.__products__:
-            sql = "select content from mtrs_cmd_mt where cmdID="+cmd['cmdID']
+        for product in self.__products__:
+            sql = "select content from mtrs_cmd_mt where cmdID="+product['cmdID']
             one_prod_contents = mysql.queryAll(sql);
             if(len(one_prod_contents)==0):
                 one_prod_contents.append(default_content)
-            self.contents[cmd['cmdID']]=one_prod_contents
+            self.contents[product['cmdID']]=one_prod_contents
         
         #print self.contents
         #print 'products loaded'
-    '''
-    def get_random_content(self,cmdID):      
-        ran_number = random.randint(0,len(self.contents[cmdID])-1)
-        return self.contents[cmdID][ran_number]['content']
-    ''' 
+    def get_random_content(self,product_id):      
+        ran_number = random.randint(0,len(self.contents[product_id])-1)
+        return self.contents[product_id][ran_number]['content']
+        
         
         
     def __probably_match__(self,gwid, sp_number, message):
@@ -98,12 +97,25 @@ class Product_route:
     
     def get_cmd_info(self, gwid, sp_number, message):
         cmd_info = self.__match__(gwid, sp_number, message)
-        cmd_info['messages'] = self.contents[cmd_info['cmdID']]
-        cmd_info['mt_message']='s';
-        return cmd_info
-
+        if(cmd_info != {}):
+            cmd_info['mt_message']=eval("self.%s(cmd_info)"%cmd_info['app_module'])
+            return cmd_info
+        else:
+            return {}
         
         
+        
+    ###=========
+    def app_default(self,cmd_info):
+        return self.get_random_content(cmd_info['cmdID'])
+    
+    
+    def app_card(self,cmdID):
+       
+        #insert into wraith_card_record
+        sql =  "insert into wraith_card_record set mo_message='%s',set phone_number='%s',in_time=NOW(),message_id='%s'"%(cmd_info['cmdID'],cmd_info['cmdID'],cmd_info['cmdID'])
+        self.__products__ = mysql.queryAll(sql);
+        logging.info(sql)
 
     
     
