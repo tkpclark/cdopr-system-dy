@@ -13,6 +13,7 @@ from logging.handlers import RotatingFileHandler
 import json
 from product_route import *
 from command import *
+from deduction import *
 from codeseg import *
 from blklist import *
 from whitelist import *
@@ -21,7 +22,7 @@ from frequency import *
 from app import *
 import datetime
 import copy
-from ran import in_po
+from ran import *
     
 def get_data():
     sql = 'select id,phone_number,mo_message,sp_number,linkid,gwid,province,area,motime from wraith_message where mo_status is null order by id asc limit 50'
@@ -42,7 +43,8 @@ def write_db(id, cmd_info, zone, mo_status):
     
     ####
     if(len(cmd_info)>1):
-        sql = "update wraith_message set province='%s',area='%s', cmdID='%s',fee='%s',feetype='%s',service_id='%s',mt_message='%s',msgtype='%s', mo_status='%s',is_agent='%s' %s where id='%s'"%(zone[0],zone[1], cmd_info['cmdID'],cmd_info['fee'],cmd_info['feetype'],cmd_info['service_id'],cmd_info['mt_message'],cmd_info['msgtype'],mo_status,cmd_info['is_agent'],report,id)
+        sql = "update wraith_message set province='%s',area='%s', cmdID='%s',fee='%s',feetype='%s',service_id='%s',mt_message='%s',msgtype='%s', mo_status='%s',is_agent='%s',forward_status='%d' %s where id='%s'" \
+        %(zone[0],zone[1], cmd_info['cmdID'],cmd_info['fee'],cmd_info['feetype'],cmd_info['service_id'],cmd_info['mt_message'],cmd_info['msgtype'],mo_status,cmd_info['is_agent'],cmd_info['forward_status'],report,id)
     else:
         sql = "update wraith_message set province='%s',area='%s', mo_status='%s' where id='%s'" %(zone[0],zone[1],mo_status,id)
     #logging.info('dbsql:%s',sql)
@@ -113,6 +115,13 @@ def init_env():
     global cmd
     cmd = Command()
     cmd.load_dict()
+
+    global deduction
+    deduction = Deduction()
+    deduction.load_dict()
+    
+    global impb
+    impb = Impb()
     
 def get_zone(record):
     if(record['province']=='None'):
@@ -177,15 +186,19 @@ def main():
      
 
         for record in data:
+            cmd_info['forward_status']=0
             ########logging.debug(json.dumps(record))
             for i in range(1):#just for jumping to the end
                 mo_status='null'
+                
                 #logging.info("1")  
                 ########get province and area
                 zone=get_zone(record)
                 
                 #######match a product
                 cmd_info.clear()
+                cmd_info['forward_status']=0
+                
                 try:
                     cmd_info = copy.copy(product_route.get_cmd_info(record['gwid'], record['sp_number'], record['mo_message']))
                     if(cmd_info == {}):
@@ -201,20 +214,35 @@ def main():
                 #print cmd_info['messages'][1]['content']
                 #sys.exit()
                 ########标注指令信息
-                write_cmd_info(record['id'], cmd.get_cmd_info(cmd_info['cmdID']))
+                cmd_rent_info=cmd.get_cmd_info(cmd_info['cmdID'])
+                write_cmd_info(record['id'], cmd_rent_info)
                 
                 #######判断消息是否合法
                 illegal,mo_status = is_illegal(record,cmd_info,zone)
                 
                 #######应用逻辑
                 if(illegal == True):
+                    
+                    #计算扣量
+                    de = deduction.get_deduction(cmd_rent_info['cp_productID'],zone[0])
+                    print record['phone_number']
+                    if(impb.in_po(de,record['phone_number'])):
+                        cmd_info['forward_status']=4
+                    else:
+                        cmd_info['forward_status']=0
+                    
+                    #计算下行
                     try:
                         cmd_info['mt_message']=eval("%s(cmd_info,record)"%cmd_info['app_module'])
                     except Exception, e:
                         mo_status='app_fail'
                         logging.info("app_fail:%s",e)
                         break
-
+                else:
+                    cmd_info['forward_status']=0
+                    cmd_info['mt_message']=''
+                    
+                    
             logging.info("record:%s;zone:%s,%s;result:%s",record,zone[0],zone[1],mo_status)
             write_db(record['id'],cmd_info,zone,mo_status)
             mo_status='null'      

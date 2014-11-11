@@ -9,6 +9,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 mt_messages={}
+card_prices={}
 max_id=0
 
 ##########################################
@@ -35,26 +36,34 @@ def get_mt_messages_from_db():
     return 
 
 
-
+def get_card_price_from_db():
+    sql = "select * from wraith_card_price where 1"
+    logging.info('%s',sql)
+    records = mysql.queryAll(sql)
+    for record in records:
+        card_prices[int(record['card_value'])] = record['card_price']
+        
+    return 
 
 ##########################################
 
 def get_seq(record):
-    card_value=int(record['mo_message'][-2:])
-    sql = "select count(*) as seq from wraith_card_record where id<'%s' and  report=1 and order_id is NULL and phone_number='%s' and right(mo_message,2)='%d'"%(record['id'],record['phone_number'],card_value)
+    card_value=5*int(record['mo_message'][-1:])
+    sql = "select count(*) as seq from wraith_card_record where id<'%s' and  report=1 and order_id is NULL and phone_number='%s' and 5*right(mo_message,1)='%d'"%(record['id'],record['phone_number'],card_value)
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     seq = int(records[0]['seq'])+1
     return seq
     
 def finish_order(record):
-    card_value=int(record['mo_message'][-2:])
-    sql = "select sum(fee) as sum from wraith_card_record where id='%s' or (id < %s and report=1 and order_id is NULL and phone_number='%s' and right(mo_message,2)='%d')"%(record['id'],record['id'],record['phone_number'],card_value)
+    card_value=5*int(record['mo_message'][-1:])
+    card_price=int(card_prices[card_value])
+    sql = "select sum(fee) as sum from wraith_card_record where deduction=0 and (id='%s' or (id < %s and report=1 and order_id is NULL and phone_number='%s' and 5*right(mo_message,1)='%d'))"%(record['id'],record['id'],record['phone_number'],card_value)
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     sum = int(records[0]['sum'])
-    #logging.info("card_value:%d, already_get:%d",card_value,sum)
-    if(sum >= card_value):
+    logging.info("card_value:%d, card_price:%d,already_get:%d",card_value,card_price,sum)
+    if(sum >= card_price):
         #logging.info("true")
         return 1
     else:
@@ -77,8 +86,8 @@ def update_mt_msg(record,mt_msg):
     #logging.info('sql:%s',sql)
     mysql.query(sql);
   
-def update_record_info(record,mt_msg,card_no,card_sec,seq,is_last):      
-    sql = "update wraith_card_record set send_mt_msg='1',mt_message='%s',seq='%d', card_no='%s',card_sec='%s',is_last='%s' where id='%s' "%(mt_msg,seq,card_no,card_sec,is_last,record['id'])
+def update_record_info(record,mt_msg,card_no,card_sec,seq,is_last,card_value,card_price):      
+    sql = "update wraith_card_record set send_mt_msg='1',mt_message='%s',seq='%d', card_no='%s',card_sec='%s',is_last='%s',card_value='%s',card_price='%s' where id='%s' "%(mt_msg,seq,card_no,card_sec,is_last,card_value,card_price,record['id'])
     #logging.info('%s',sql)
     mysql.query(sql)
     
@@ -93,7 +102,7 @@ def update_record_status(record):
 
 
 def fetch_A_card(card_value):
-    sql = "select card_no,card_sec from wraith_card_no where status=0 and card_value='%s' limit 1"%(card_value)
+    sql = "select card_no,card_sec from wraith_card_no where status=0 and card_value='%d' limit 1"%(card_value)
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     if(mysql.rowcount()):
@@ -106,26 +115,33 @@ def fetch_A_card(card_value):
         return card_no,card_sec
     else:
         logging.info("no card!!!!!!")
-        return ('0','0')
+        time.sleep(3)
+        return False
     
 def send_mt_message(record):
-    card_value=record['mo_message'][-2:]
+    card_value=5*int(record['mo_message'][-1:])
     is_last = finish_order(record)
     seq = get_seq(record)  
     mt_msg=get_mt_msg(record,seq,is_last)
     if(is_last):
-        card_no, card_sec = fetch_A_card(card_value);
+        card = fetch_A_card(card_value)
+        if(card == False):
+            return
+        card_no, card_sec = card
+        card_price=card_prices[int(card_value)]
     else:
         card_no=card_sec='000'
+        card_price='0'
         
     mt_msg=mt_msg.replace('$CARD_NO',card_no)
     mt_msg=mt_msg.replace('$CARD_SEC',card_sec)
-    mt_msg=mt_msg.replace('$CARD_VALUE',card_value)
+    mt_msg=mt_msg.replace('$CARD_VALUE',str(card_value))
     mt_msg=mt_msg.replace('$FEE',record['fee'])
+    mt_msg=mt_msg.replace('$CMD',record['mo_message'])
     
 
     update_mt_msg(record,mt_msg)
-    update_record_info(record,mt_msg,card_no,card_sec,seq,is_last)
+    update_record_info(record,mt_msg,card_no,card_sec,seq,is_last,card_value,card_price)
     logging.info("sendmt:seq[%s]is_last[%s]mt_msg[%s]cardno[%s]card_sec[%s]"%(seq,is_last,mt_msg,card_no,card_sec))
 ##########################################
 
@@ -148,8 +164,8 @@ def delete_card(card_no):
     mysql.query(sql)
     
 def gen_order(record):
-    card_value=int(record['mo_message'][-2:])
-    sql="update wraith_card_record set order_id='%s' where id<=%s and report=1 and order_id is NULL and phone_number='%s' and right(mo_message,2)='%d'"%('1',record['id'],record['phone_number'],card_value)
+    card_value=5*int(record['mo_message'][-1:])
+    sql="update wraith_card_record set order_id='%s' where id<=%s and report=1 and order_id is NULL and phone_number='%s' and 5*right(mo_message,1)='%d'"%('1',record['id'],record['phone_number'],card_value)
     #logging.info('%s',sql)
     mysql.query(sql)
     return
@@ -157,39 +173,47 @@ def gen_order(record):
  
 ###############    
 def send_mt_message_batch():
-    sql="select * from wraith_card_record where in_time > NOW()-interval 3 hour and send_mt_msg=0 order by id asc limit 1"
+    sql="select * from wraith_card_record where in_time > NOW()-interval 30 minute and send_mt_msg=0 order by id asc limit 1"
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     for record in records:
         send_mt_message(record)
- 
+    return mysql.rowcount
+
 def update_report_batch():
-    sql="select * from wraith_card_record where in_time > NOW()-interval 3 hour and send_mt_msg=1 and report is NULL order by id asc limit 1"
+    sql="select * from wraith_card_record where in_time > NOW()-interval 30 minute and send_mt_msg=1 and report is NULL order by id asc limit 1"
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     for record in records:
         update_report(record)
-        
+    return mysql.rowcount
 
 def gen_order_batch():
-    sql="select * from wraith_card_record where in_time > NOW()-interval 3 hour and report=1 and is_last=1 and order_id is NULL limit 1"
+    sql="select * from wraith_card_record where in_time > NOW()-interval 30 minute and report=1 and is_last=1 and order_id is NULL limit 1"
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     for record in records:
         gen_order(record)
-        delete_card(record['card_no'])     
+        delete_card(record['card_no'])  
+    return mysql.rowcount
+
 ##################################
 def main():
     
     init_env()
     get_mt_messages_from_db()
+    get_card_price_from_db()
     logging.info('starting...')
     
     while True:
-        send_mt_message_batch()
-        update_report_batch()
-        gen_order_batch()
-        time.sleep(0.1)
+        a = send_mt_message_batch()
+        b = update_report_batch()
+        c = gen_order_batch()
+        
+        if (a or b or c):
+            continue
+        else:
+            time.sleep(1)
         
 if __name__ == "__main__":
     main()

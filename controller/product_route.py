@@ -99,7 +99,7 @@ class Product_route:
     def get_cmd_info(self, gwid, sp_number, message):
         cmd_info = self.__match__(gwid, sp_number, message)
         cmd_info['messages'] = self.contents[cmd_info['cmdID']]
-        cmd_info['mt_message']='s';
+        cmd_info['mt_message']='';
         return cmd_info
 
         

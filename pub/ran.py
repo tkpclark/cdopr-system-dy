@@ -5,18 +5,29 @@ import os
 import string
 import random
 import logging
+import redis
 
-def in_po(p):
-    po=100*p
-    a=random.randint(1,100)
-    if(a <= po):
-        re=True
-    else:
-        re=False
+class Impb:
     
-    #logging.info("p:%f,re:%s",po,re)
-    #print "p:%f,re:%s"%(po,re)
-    return re
+    r = False
+    def __init__(self):
+        self.r = redis.StrictRedis(host='localhost', port=16379, db=4)
+        
+    def in_po(self,p,phone_number):
+        po=100*p
+        a=random.randint(1,100)
+        if(a <= po):
+            if(self.r.exists(phone_number)):#同一个用户一天只能扣量一次
+                re=False
+            else:
+                re=True
+                self.r.setex(phone_number,86400,1)
+        else:
+            re=False
+        
+        #logging.info("p:%f,re:%s",po,re)
+        #print "p:%f,re:%s"%(po,re)
+        return re
 def main():
     
     for i in range(string.atoi(sys.argv[1])):

@@ -18,13 +18,14 @@ from blklist import *
 from whitelist import *
 from visit_limit import *
 from frequency import *
+from app import *
 import datetime
 import copy
 from ran import in_po
     
 def get_data():
     sql = 'select id,phone_number,mo_message,sp_number,linkid,gwid,province,area,motime from wraith_message where mo_status is null order by id asc limit 50'
-    logging.info(sql)
+    #logging.info(sql)
     data = mysql.queryAll(sql);
     return data
 
@@ -113,6 +114,54 @@ def init_env():
     cmd = Command()
     cmd.load_dict()
     
+def get_zone(record):
+    if(record['province']=='None'):
+        zone = codeseg.get_mobile_area(record['phone_number'])
+    else:
+        zone = (record['province'],record['area'])
+    return zone
+
+def is_illegal(record,cmd_info,zone):
+        #######白名单
+    if(whitelist.match(record['phone_number'])):
+        mo_status='ok'
+        return (True,mo_status)
+    
+    ########Frequency
+    if(frequency.rec_freq(record['phone_number'],record['motime'])==False):
+        mo_status = '频度过高'
+        return (False,mo_status)
+    
+    ########linkisok?
+    '''
+    if(record['linkid'].isdigit() == False):
+        mo_status = 'linkid异常'
+        break
+    '''
+    ##########blk list check
+    #logging.info("matching..."+record['phone_number'])
+    if(blklist.match(record['phone_number'])):
+        mo_status='黑名单'
+        return (False,mo_status)
+    
+    ########check visit count 
+    f,v = visit_limit.is_arrive_limit(record['phone_number'],cmd_info['cmdID'],zone[0])
+    if(f != '0'):
+        mo_status = v
+        return (False,mo_status)
+    
+    ########check open province  
+    if (len(cmd_info['open_province']) > 0) and (cmd_info['open_province'] != 'None') and zone[0] not in cmd_info['open_province']:
+        mo_status='省份未开通'
+        return (False,mo_status)
+    
+    if(zone[0]+'@'+zone[1] in cmd_info['forbidden_area']):
+        mo_status='区域禁止'
+        return (False,mo_status)
+        
+        
+    return (True,'ok')         
+                
 def main():
     init_env()
    
@@ -133,73 +182,39 @@ def main():
                 mo_status='null'
                 #logging.info("1")  
                 ########get province and area
-                if(record['province']=='None'):
-                    zone = codeseg.get_mobile_area(record['phone_number'])
-                else:
-                    zone = (record['province'],record['area'])
+                zone=get_zone(record)
                 
                 #######match a product
                 cmd_info.clear()
-                cmd_info = copy.copy(product_route.get_cmd_info(record['gwid'], record['sp_number'], record['mo_message']))
-                if(cmd_info == {}):
-                    mo_status='无匹配指令'
+                try:
+                    cmd_info = copy.copy(product_route.get_cmd_info(record['gwid'], record['sp_number'], record['mo_message']))
+                    if(cmd_info == {}):
+                        mo_status='无匹配指令'
+                        break
+                except Exception, e:
+                    mo_status='prod_fail'
+                    logging.info("prod_fail:%s",e)
                     break
 
+                
+                #print cmd_info
+                #print cmd_info['messages'][1]['content']
+                #sys.exit()
                 ########标注指令信息
                 write_cmd_info(record['id'], cmd.get_cmd_info(cmd_info['cmdID']))
+                
+                #######判断消息是否合法
+                illegal,mo_status = is_illegal(record,cmd_info,zone)
+                
+                #######应用逻辑
+                if(illegal == True):
+                    try:
+                        cmd_info['mt_message']=eval("%s(cmd_info,record)"%cmd_info['app_module'])
+                    except Exception, e:
+                        mo_status='app_fail'
+                        logging.info("app_fail:%s",e)
+                        break
 
-                #######白名单
-                if(whitelist.match(record['phone_number'])):
-                    mo_status='ok'
-                    break
-
-
-                ########Frequency
-                if(frequency.rec_freq(record['phone_number'],record['motime'])==False):
-                    mo_status = '频度过高'
-                    break
-                
-                
-                ########linkisok?
-                '''
-                if(record['linkid'].isdigit() == False):
-                    mo_status = 'linkid异常'
-                    break
-                '''
-                ##########blk list check
-                #logging.info("matching..."+record['phone_number'])
-                if(blklist.match(record['phone_number'])):
-                    mo_status='黑名单'
-                    break
-                
-                
-                
-                
-                ########check visit count 
-                f,v = visit_limit.is_arrive_limit(record['phone_number'],cmd_info['cmdID'],zone[0])
-                if(f != '0'):
-                    mo_status = v
-                    break
-                
-                ########check open province  
-                if (len(cmd_info['open_province']) > 0) and (cmd_info['open_province'] != 'None') and zone[0] not in cmd_info['open_province']:
-                    mo_status='省份未开通'
-                    break
-    
-                if(zone[0]+'@'+zone[1] in cmd_info['forbidden_area']):
-                    mo_status='区域禁止'
-                    break
-                
-                
-                
-                
-                
-                
-                ########all check is ok
-                mo_status='ok'
-                ########
-                ########
-                break
             logging.info("record:%s;zone:%s,%s;result:%s",record,zone[0],zone[1],mo_status)
             write_db(record['id'],cmd_info,zone,mo_status)
             mo_status='null'      

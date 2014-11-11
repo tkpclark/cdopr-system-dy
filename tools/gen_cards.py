@@ -16,7 +16,7 @@ def main():
         card_no="".join(random.sample('012345678901234567890123456789012345678901234567890123456789',20))
         card_sec="".join(random.sample('012345678901234567890123456789012345678901234567890123456789',20))
         #gwid=random.randint(1,20)
-        sql = "insert into wraith_card_no(card_no,card_sec,card_value)values('%s','%s','30')"%(card_no,card_sec)
+        sql = "insert into wraith_card_no(card_no,card_sec,card_value)values('%s','%s','10')"%(card_no,card_sec)
         print sql
         mysql.cur.execute(sql)
         

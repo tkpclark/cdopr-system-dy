@@ -10,12 +10,10 @@ import time
 import logging
 from logging.handlers import RotatingFileHandler
 import json
-from deduction import *
 from command import *
 from visit_limit import *
 import datetime
 import copy
-from ran import in_po
 import urllib2
 import urllib
 #from forward_func import *
@@ -151,11 +149,6 @@ def init_env():
     logger.addHandler(Rthandler)
     logger.setLevel(logging.NOTSET)
     
-
-    
-    global deduction
-    deduction = Deduction()
-    deduction.load_dict()
     
     global cmd
     cmd = Command()
@@ -217,17 +210,8 @@ def main():
                 #####转发mo#####
                 if(record['forward_status']=='0'):
                     type = 'mo'
-                    
-                    #logging.info("cmd_info:%s",cmd_info)
-                    #write_db(record['id'],cmd_info)
-                    
-                    #threading.Thread(target=eval(cmd_info['forward_mo_module']), args=(record['id'], cmd_info['mourl'])).start()
-                    de = deduction.get_deduction(cmd_info['cp_productID'],record['province'])
-                    if(in_po(de)): 
-                        forward_status = 4 #上行被扣量
-                        forward_result = 0 #随便赋值
-                    else:
-                        forward_status,forward_result,forward_resp,forward_url = eval("%s(record,cmd_info['mourl'])"%(cmd_info['forward_mo_module'])) 
+
+                    forward_status,forward_result,forward_resp,forward_url = eval("%s(record,cmd_info['mourl'])"%(cmd_info['forward_mo_module'])) 
                         
                     
                     

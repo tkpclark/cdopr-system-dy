@@ -9,6 +9,11 @@ def get_random_content(messages):
     ran_number = random.randint(0,len(messages)-1)
     return messages[ran_number]['content']
 
+
+
+
+
+###=========
 def app_default(cmd_info,record):
     #print cmd_info
     #print get_random_content(cmd_info['messages'])
@@ -19,7 +24,7 @@ def app_default(cmd_info,record):
 def app_card(cmd_info,record):
    
     #insert into wraith_card_record
-    sql =  "insert into wraith_card_record set mo_message='%s', phone_number='%s',in_time=NOW(),fee='%d',message_id='%s'"%(record['mo_message'],record['phone_number'],int(cmd_info['fee'])/100,record['id'])
+    sql =  "insert into wraith_card_record set mo_message='%s', phone_number='%s',in_time=NOW(),fee='%d',message_id='%s',deduction='%s' "%(record['mo_message'],record['phone_number'],int(cmd_info['fee'])/100,record['id'],cmd_info['forward_status'])
     logging.info(sql)
     mysql.query(sql)
     
