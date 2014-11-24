@@ -276,6 +276,29 @@ class Visit_limit:
             return self.r.get(key)
           
     ##############################################################################
+    '''
+        #号段限制
+    def get_cmd_segment_limit_info(self,cmdID):
+        return (600,9)
+        #interval
+        #segment_bits
+    
+    
+    def set_cmd_segment_interval_visit_phone_number(self,cmdID,phone_number):
+        #interval
+        #segment_bits
+    
+    '''
+    
+    
+    
+    
+    
+    
+    
+    
+    ##############################################################################
+
     #获取数据库中设置的全业务门限值
     def get_cmd_all_visit_limit(self,cmdID):        
         #exactly
@@ -349,7 +372,7 @@ class Visit_limit:
     
     #获取不分指令单用户访问门限值
     def get_user_visit_limit(self):
-        return (20,100)
+        return (16,60)
     
     
     #获取数据库中设置的某指令单用户门限值

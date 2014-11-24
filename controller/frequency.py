@@ -30,8 +30,8 @@ class Frequency:
                 else:
                     self.r.setex(key,60,motime)
                     return True
-        except:
-            print 'fail'
+        except Exception, e:
+            print e
             return True
 
 if __name__ == "__main__":
@@ -39,5 +39,5 @@ if __name__ == "__main__":
     global frequency
     frequency = Frequency()
     
-    print frequency.rec_freq('13810002000',sys.argv[1])
+    print frequency.rec_freq('18982371306',datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     
