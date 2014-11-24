@@ -15,7 +15,8 @@ def main():
         #phone_number='133%s'%("".join(random.sample('01234567890123456789012345678901234567890123456789',8)))
 	phone_number=random.choice(['13011111111','13022222222','13033333333','13055555555','13044444444'])
         sp_number='10660766'
-        mo_message=random.choice(['801', '802', '803'])
+        #mo_message=random.choice(['801', '802', '803'])
+        mo_message=random.choice(['801'])
         linkid="".join(random.sample('012345678901234567890123456789012345678901234567890123456789',20))
         #gwid=random.randint(1,20)
         gwid=42

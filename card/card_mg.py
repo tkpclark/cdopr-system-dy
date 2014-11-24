@@ -21,7 +21,7 @@ def init_env():
     #init logging
     logfile = '/home/tkp/cdopr/logs/card/card_mg.log'
     Rthandler = RotatingFileHandler(logfile, maxBytes=1000*1024,backupCount=500)
-    formatter = logging.Formatter('[%(asctime)s][%(levelname)s][1.00]:  %(message)s - %(filename)s:%(lineno)d')
+    formatter = logging.Formatter('[%(asctime)s][%(levelname)s][1.01]:  %(message)s - %(filename)s:%(lineno)d')
     Rthandler.setFormatter(formatter)
     logger=logging.getLogger()
     logger.addHandler(Rthandler)
@@ -49,7 +49,7 @@ def get_card_price_from_db():
 
 def get_seq(record):
     card_value=5*int(record['mo_message'][-1:])
-    sql = "select count(*) as seq from wraith_card_record where id<'%s' and  report=1 and order_id is NULL and phone_number='%s' and 5*right(mo_message,1)='%d'"%(record['id'],record['phone_number'],card_value)
+    sql = "select count(*) as seq from wraith_card_record where in_time > NOW()-interval 12 hour and id<'%s' and  report=1 and order_id is NULL and phone_number='%s' and 5*right(mo_message,1)='%d'"%(record['id'],record['phone_number'],card_value)
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     seq = int(records[0]['seq'])+1
@@ -58,7 +58,7 @@ def get_seq(record):
 def finish_order(record):
     card_value=5*int(record['mo_message'][-1:])
     card_price=int(card_prices[card_value])
-    sql = "select sum(fee) as sum from wraith_card_record where deduction=0 and (id='%s' or (id < %s and report=1 and order_id is NULL and phone_number='%s' and 5*right(mo_message,1)='%d'))"%(record['id'],record['id'],record['phone_number'],card_value)
+    sql = "select ifnull(ceil(sum(fee)),0) as sum  from wraith_card_record where in_time > NOW()-interval 12 hour and deduction=0 and (id='%s' or (id < %s and report=1 and order_id is NULL and phone_number='%s' and 5*right(mo_message,1)='%d'))"%(record['id'],record['id'],record['phone_number'],card_value)
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     sum = int(records[0]['sum'])
@@ -181,7 +181,7 @@ def send_mt_message_batch():
     return mysql.rowcount
 
 def update_report_batch():
-    sql="select * from wraith_card_record where in_time > NOW()-interval 30 minute and send_mt_msg=1 and report is NULL order by id asc limit 1"
+    sql="select * from wraith_card_record where in_time > NOW()-interval 30 minute and send_mt_msg=1 and report is NULL order by id asc limit 500"
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     for record in records:
@@ -189,7 +189,7 @@ def update_report_batch():
     return mysql.rowcount
 
 def gen_order_batch():
-    sql="select * from wraith_card_record where in_time > NOW()-interval 30 minute and report=1 and is_last=1 and order_id is NULL limit 1"
+    sql="select * from wraith_card_record where in_time > NOW()-interval 30 minute and report=1 and is_last=1 and order_id is NULL order by id asc limit 100"
     #logging.info('%s',sql)
     records = mysql.queryAll(sql)
     for record in records:
@@ -197,6 +197,9 @@ def gen_order_batch():
         delete_card(record['card_no'])  
     return mysql.rowcount
 
+def recycle_card():
+    sql="update wraith_card_no set status=0,update_time=NULL where `status`=1 and update_time < NOW() - interval 3 day"
+    mysql.query(sql);
 ##################################
 def main():
     
@@ -206,6 +209,7 @@ def main():
     logging.info('starting...')
     
     while True:
+        recycle_card()
         a = send_mt_message_batch()
         b = update_report_batch()
         c = gen_order_batch()
@@ -213,7 +217,7 @@ def main():
         if (a or b or c):
             continue
         else:
-            time.sleep(1)
+            time.sleep(2)
         
 if __name__ == "__main__":
     main()
